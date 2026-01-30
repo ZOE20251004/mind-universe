@@ -3,55 +3,68 @@
 <head>
     <title>认知沙盘</title>
     <style>
-        body { margin:0; background:#000; }
-        canvas { display:block; background:#000; }
+        body { margin:0; background:#000; overflow:hidden; }
+        #canvas { display:block; background:#000; }
         #panel {
-            position:fixed; top:20px; left:20px; 
-            background:rgba(0,0,0,0.7); color:white; 
+            position:fixed; top:20px; left:20px;
+            background:rgba(0,0,0,0.8); color:#fff;
             padding:15px; border-radius:10px; border:1px solid #555;
         }
         button {
-            background:#333; color:white; border:1px solid #666;
-            padding:10px; margin:5px; border-radius:5px; cursor:pointer;
+            background:#333; color:#fff; border:1px solid #666;
+            padding:10px 15px; margin:5px 0; border-radius:6px;
+            cursor:pointer; display:block; width:180px;
         }
     </style>
 </head>
 <body>
-    <canvas id="c"></canvas>
+    <!-- 关键：明确设置canvas尺寸 -->
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
     <div id="panel">
-        <button onclick="addNode()">+ 加节点</button>
-        <button onclick="reset()">🔄 重置</button>
-        <div style="color:#aaa; margin-top:10px; font-size:12px;">
-            节点: <span id="count">8</span>
-        </div>
+        <h3 style="margin:0 0 10px 0; color:#8af;">认知网络</h3>
+        <button onclick="addNode()">+ 添加节点</button>
+        <button onclick="reset()">🔄 重置布局</button>
+        <p style="color:#aaa; margin-top:10px; font-size:12px;">
+            节点数: <span id="count">8</span>
+        </p>
     </div>
 
     <script>
-        // 1. 设置Canvas
-        const canvas = document.getElementById('c');
+        // ===== 初始化 =====
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        
+        // 确保全屏
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         
-        // 2. 简单数据
+        console.log('Canvas尺寸:', canvas.width, 'x', canvas.height);
+        
+        // ===== 数据 =====
         let nodes = [
-            {x:200, y:200, r:20, color:'#f00', name:'规则'},
-            {x:400, y:200, r:22, color:'#0f0', name:'资本'},
-            {x:300, y:350, r:18, color:'#00f', name:'中产'},
-            {x:500, y:300, r:16, color:'#ff0', name:'底层'},
-            {x:150, y:300, r:20, color:'#f0f', name:'金融'},
-            {x:350, y:100, r:19, color:'0ff', name:'政治'},
-            {x:100, y:200, r:21, color:'#fa0', name:'军事'},
-            {x:550, y:200, r:17, color:'#a0f', name:'弱国'}
+            {x:200, y:200, r:25, color:'#f00', name:'规则'},
+            {x:400, y:150, r:28, color:'#0f0', name:'资本'},
+            {x:300, y:350, r:22, color:'#00f', name:'中产'},
+            {x:500, y:300, r:20, color:'#ff0', name:'底层'},
+            {x:150, y:300, r:24, color:'#f0f', name:'金融'},
+            {x:350, y:100, r:25, color:'#0ff', name:'政治'},
+            {x:100, y:200, r:23, color:'#fa0', name:'军事'},
+            {x:550, y:200, r:21, color:'#a0f', name:'弱国'}
         ];
         
-        // 3. 简单绘制函数
+        // ===== 绘制 =====
         function draw() {
+            // 清空画布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 画黑色背景
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // 画连线
             ctx.strokeStyle = '#666';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             for(let i=0; i<nodes.length-1; i++) {
                 ctx.beginPath();
                 ctx.moveTo(nodes[i].x, nodes[i].y);
@@ -61,19 +74,19 @@
             
             // 画节点（黑球）
             nodes.forEach(node => {
-                // 发光效果
+                // 外发光
                 ctx.fillStyle = node.color + '40';
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, node.r*1.5, 0, Math.PI*2);
                 ctx.fill();
                 
-                // 黑球
+                // 黑球主体
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, node.r, 0, Math.PI*2);
                 ctx.fill();
                 
-                // 白边
+                // 白色描边
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
@@ -86,11 +99,13 @@
             });
         }
         
-        // 4. 拖拽功能
+        // ===== 拖拽功能 =====
         let dragNode = null;
-        canvas.onmousedown = e => {
+        
+        canvas.onmousedown = function(e) {
             const x = e.clientX;
             const y = e.clientY;
+            
             for(let node of nodes) {
                 const dx = x - node.x;
                 const dy = y - node.y;
@@ -100,22 +115,26 @@
                 }
             }
         };
-        canvas.onmousemove = e => {
+        
+        canvas.onmousemove = function(e) {
             if(!dragNode) return;
             dragNode.x = e.clientX;
             dragNode.y = e.clientY;
-            draw(); // 重绘
+            draw(); // 立即重绘
         };
-        canvas.onmouseup = () => dragNode = null;
         
-        // 5. 控制函数
+        canvas.onmouseup = function() {
+            dragNode = null;
+        };
+        
+        // ===== 控制函数 =====
         function addNode() {
-            const colors = ['#f00','#0f0','#00f','#ff0','#f0f','0ff'];
+            const colors = ['#f00','#0f0','#00f','#ff0','#f0f','#0ff'];
             nodes.push({
-                x: Math.random()*canvas.width,
-                y: Math.random()*canvas.height,
-                r: 15 + Math.random()*10,
-                color: colors[Math.floor(Math.random()*colors.length)],
+                x: Math.random() * (canvas.width - 100) + 50,
+                y: Math.random() * (canvas.height - 100) + 50,
+                r: 15 + Math.random() * 10,
+                color: colors[Math.floor(Math.random() * colors.length)],
                 name: '新节点'
             });
             document.getElementById('count').textContent = nodes.length;
@@ -123,27 +142,33 @@
         }
         
         function reset() {
-            const centerX = canvas.width/2;
-            const centerY = canvas.height/2;
-            const radius = Math.min(canvas.width, canvas.height)*0.3;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) * 0.3;
+            
             nodes.forEach((node, i) => {
-                const angle = (i/nodes.length)*Math.PI*2;
-                node.x = centerX + Math.cos(angle)*radius;
-                node.y = centerY + Math.sin(angle)*radius;
+                const angle = (i / nodes.length) * Math.PI * 2;
+                node.x = centerX + Math.cos(angle) * radius;
+                node.y = centerY + Math.sin(angle) * radius;
             });
+            
             draw();
         }
         
-        // 6. 启动
-        draw();
+        // ===== 启动 =====
+        draw(); // 立即绘制第一帧
         document.getElementById('count').textContent = nodes.length;
         
         // 窗口大小变化
-        window.onresize = () => {
+        window.onresize = function() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             draw();
         };
+        
+        // 调试信息
+        console.log('认知沙盘已启动，节点数:', nodes.length);
+        console.log('Canvas可用:', !!canvas.getContext);
     </script>
 </body>
 </html>
