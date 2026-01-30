@@ -1,236 +1,149 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌌 认知宇宙沙盘</title>
+    <title>认知沙盘</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: #000; 
-            overflow: hidden; 
-            font-family: sans-serif;
-            color: white;
-            height: 100vh;
-        }
-        canvas { 
-            display: block; 
-            background: #000;
-        }
+        body { margin:0; background:#000; }
+        canvas { display:block; background:#000; }
         #panel {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(30,30,40,0.9);
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #444;
-            z-index: 100;
+            position:fixed; top:20px; left:20px; 
+            background:rgba(0,0,0,0.7); color:white; 
+            padding:15px; border-radius:10px; border:1px solid #555;
         }
         button {
-            background: #333;
-            color: #ddd;
-            border: 1px solid #555;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 6px;
-            cursor: pointer;
-            display: block;
-            width: 200px;
+            background:#333; color:white; border:1px solid #666;
+            padding:10px; margin:5px; border-radius:5px; cursor:pointer;
         }
-        button:hover { background: #444; }
-        .node { fill: #000; stroke: #fff; stroke-width: 2px; cursor: move; }
-        .link { stroke: #666; stroke-width: 1.5; opacity: 0.7; }
     </style>
 </head>
 <body>
-    <canvas id="universe"></canvas>
-    
+    <canvas id="c"></canvas>
     <div id="panel">
-        <h3>控制面板</h3>
-        <button onclick="addNode()">+ 添加节点</button>
-        <button onclick="resetView()">🔄 重置</button>
-        <button onclick="togglePhysics()">⚡ 切换物理</button>
-        <p style="margin-top:10px; color:#aaa; font-size:12px;">
-            节点: <span id="count">8</span> | 拖拽黑球互动
-        </p>
+        <button onclick="addNode()">+ 加节点</button>
+        <button onclick="reset()">🔄 重置</button>
+        <div style="color:#aaa; margin-top:10px; font-size:12px;">
+            节点: <span id="count">8</span>
+        </div>
     </div>
 
     <script>
-        // ===== 初始化 =====
-        const canvas = document.getElementById('universe');
+        // 1. 设置Canvas
+        const canvas = document.getElementById('c');
         const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         
-        // ===== 数据 =====
+        // 2. 简单数据
         let nodes = [
-            { id: 0, name: "规则制定者", x: width*0.3, y: height*0.4, vx:0, vy:0, r: 25, color: '#ff5555' },
-            { id: 1, name: "资本", x: width*0.6, y: height*0.3, vx:0, vy:0, r: 28, color: '#55ff55' },
-            { id: 2, name: "中产", x: width*0.5, y: height*0.6, vx:0, vy:0, r: 22, color: '#ffaa00' },
-            { id: 3, name: "底层", x: width*0.7, y: height*0.7, vx:0, vy:0, r: 20, color: '#aaaaaa' },
-            { id: 4, name: "金融系统", x: width*0.2, y: height*0.5, vx:0, vy:0, r: 24, color: '#5555ff' },
-            { id: 5, name: "政治", x: width*0.4, y: height*0.2, vx:0, vy:0, r: 25, color: '#aa55ff' },
-            { id: 6, name: "军事", x: width*0.2, y: height*0.3, vx:0, vy:0, r: 23, color: '#00aaaa' },
-            { id: 7, name: "弱国", x: width*0.8, y: height*0.5, vx:0, vy:0, r: 21, color: '#ff55aa' }
+            {x:200, y:200, r:20, color:'#f00', name:'规则'},
+            {x:400, y:200, r:22, color:'#0f0', name:'资本'},
+            {x:300, y:350, r:18, color:'#00f', name:'中产'},
+            {x:500, y:300, r:16, color:'#ff0', name:'底层'},
+            {x:150, y:300, r:20, color:'#f0f', name:'金融'},
+            {x:350, y:100, r:19, color:'0ff', name:'政治'},
+            {x:100, y:200, r:21, color:'#fa0', name:'军事'},
+            {x:550, y:200, r:17, color:'#a0f', name:'弱国'}
         ];
         
-        let links = [
-            { from:0, to:1 }, { from:0, to:5 }, { from:0, to:6 },
-            { from:1, to:2 }, { from:1, to:3 }, { from:1, to:4 },
-            { from:2, to:3 }, { from:4, to:5 }, { from:5, to:6 },
-            { from:6, to:7 }, { from:7, to:1 }
-        ];
-        
-        let isPhysics = true;
-        let dragNode = null;
-        
-        // ===== 绘制 =====
+        // 3. 简单绘制函数
         function draw() {
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 连线
+            // 画连线
             ctx.strokeStyle = '#666';
             ctx.lineWidth = 1.5;
-            links.forEach(l => {
-                const a = nodes[l.from];
-                const b = nodes[l.to];
+            for(let i=0; i<nodes.length-1; i++) {
                 ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
+                ctx.moveTo(nodes[i].x, nodes[i].y);
+                ctx.lineTo(nodes[i+1].x, nodes[i+1].y);
                 ctx.stroke();
-            });
+            }
             
-            // 节点（黑球）
+            // 画节点（黑球）
             nodes.forEach(node => {
+                // 发光效果
+                ctx.fillStyle = node.color + '40';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.r*1.5, 0, Math.PI*2);
+                ctx.fill();
+                
                 // 黑球
-                ctx.fillStyle = node.color;
+                ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, node.r, 0, Math.PI*2);
                 ctx.fill();
                 
-                // 白色描边
+                // 白边
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
                 // 标签
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 14px sans-serif';
+                ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(node.name, node.x, node.y + node.r + 20);
             });
         }
         
-        // ===== 物理 =====
-        function updatePhysics() {
-            if (!isPhysics) return;
-            
-            nodes.forEach((node, i) => {
-                // 节点间斥力
-                for (let j = i+1; j < nodes.length; j++) {
-                    const other = nodes[j];
-                    const dx = node.x - other.x;
-                    const dy = node.y - other.y;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    const minDist = node.r + other.r + 30;
-                    
-                    if (dist < minDist && dist > 0) {
-                        const force = (minDist - dist) * 0.01;
-                        node.vx += (dx/dist) * force;
-                        node.vy += (dy/dist) * force;
-                        other.vx -= (dx/dist) * force;
-                        other.vy -= (dy/dist) * force;
-                    }
-                }
-                
-                // 边界
-                if (node.x < node.r) node.vx = Math.abs(node.vx);
-                if (node.x > width - node.r) node.vx = -Math.abs(node.vx);
-                if (node.y < node.r) node.vy = Math.abs(node.vy);
-                if (node.y > height - node.r) node.vy = -Math.abs(node.vy);
-                
-                // 移动
-                node.vx *= 0.95;
-                node.vy *= 0.95;
-                node.x += node.vx;
-                node.y += node.vy;
-            });
-        }
-        
-        // ===== 动画循环 =====
-        function animate() {
-            updatePhysics();
-            draw();
-            requestAnimationFrame(animate);
-        }
-        
-        // ===== 交互 =====
-        canvas.addEventListener('mousedown', e => {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            for (let node of nodes) {
+        // 4. 拖拽功能
+        let dragNode = null;
+        canvas.onmousedown = e => {
+            const x = e.clientX;
+            const y = e.clientY;
+            for(let node of nodes) {
                 const dx = x - node.x;
                 const dy = y - node.y;
-                if (dx*dx + dy*dy < node.r*node.r) {
+                if(dx*dx + dy*dy < node.r*node.r) {
                     dragNode = node;
-                    node.vx = node.vy = 0;
                     return;
                 }
             }
-        });
+        };
+        canvas.onmousemove = e => {
+            if(!dragNode) return;
+            dragNode.x = e.clientX;
+            dragNode.y = e.clientY;
+            draw(); // 重绘
+        };
+        canvas.onmouseup = () => dragNode = null;
         
-        canvas.addEventListener('mousemove', e => {
-            if (!dragNode) return;
-            const rect = canvas.getBoundingClientRect();
-            dragNode.x = e.clientX - rect.left;
-            dragNode.y = e.clientY - rect.top;
-        });
-        
-        canvas.addEventListener('mouseup', () => dragNode = null);
-        
-        // ===== 控制函数 =====
+        // 5. 控制函数
         function addNode() {
-            const names = ["叙事权", "技术奇点", "情感资本", "算法霸权"];
-            const newId = nodes.length;
+            const colors = ['#f00','#0f0','#00f','#ff0','#f0f','0ff'];
             nodes.push({
-                id: newId,
-                name: names[newId % names.length],
-                x: Math.random()*(width-100)+50,
-                y: Math.random()*(height-100)+50,
-                vx:0, vy:0,
-                r: 20 + Math.random()*10,
-                color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                x: Math.random()*canvas.width,
+                y: Math.random()*canvas.height,
+                r: 15 + Math.random()*10,
+                color: colors[Math.floor(Math.random()*colors.length)],
+                name: '新节点'
             });
             document.getElementById('count').textContent = nodes.length;
+            draw();
         }
         
-        function resetView() {
-            const centerX = width/2, centerY = height/2;
-            const radius = Math.min(width, height) * 0.35;
+        function reset() {
+            const centerX = canvas.width/2;
+            const centerY = canvas.height/2;
+            const radius = Math.min(canvas.width, canvas.height)*0.3;
             nodes.forEach((node, i) => {
-                const angle = (i/nodes.length) * Math.PI*2;
+                const angle = (i/nodes.length)*Math.PI*2;
                 node.x = centerX + Math.cos(angle)*radius;
                 node.y = centerY + Math.sin(angle)*radius;
-                node.vx = node.vy = 0;
             });
+            draw();
         }
         
-        function togglePhysics() {
-            isPhysics = !isPhysics;
-        }
-        
-        // ===== 启动 =====
-        animate();
+        // 6. 启动
+        draw();
         document.getElementById('count').textContent = nodes.length;
         
-        // 窗口调整
-        window.addEventListener('resize', () => {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        });
+        // 窗口大小变化
+        window.onresize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        };
     </script>
 </body>
 </html>
